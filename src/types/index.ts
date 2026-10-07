@@ -1,0 +1,11 @@
+export type Project = { id: string; name: string; location: string; progress: number; startDate: string; plannedEndDate: string; budget: number; spent: number; mainImageUrl: string | null }
+export type Stage = { id: string; projectId: string; name: string; order: number; plannedStart: string; plannedEnd: string; plannedPercent: number; actualPercent: number; status?: string }
+export type StageFinancial = { stageId: string; budgetTotal: number; actualTotal: number; budgetMaterials: number; actualMaterials: number; budgetLabor: number; actualLabor: number }
+export type MediaType = 'photo' | 'video'
+export type Media = { id: string; projectId: string; stageId: string | null; type: MediaType; date: string; caption: string | null; url: string | null; thumbHue: number }
+export type DocumentCategory = 'Projetos' | 'Notas fiscais' | 'Medições' | 'ART/RRT' | 'Contratos' | 'Outros'
+export type ProjectDocument = { id: string; projectId: string; category: DocumentCategory; name: string; date: string; fileType: string }
+export type ScheduleCurve = { months: string[]; planned: number[]; actual: (number | null)[] }
+export type ClientProject = { project: Project; stages: Stage[]; financials: StageFinancial[]; media: Media[]; documents: ProjectDocument[]; curve: ScheduleCurve }
+export type StageState = 'ok' | 'run' | 'idle' | 'bad'
+export type ProjectAccess = { id: string; projectId: string; active: boolean; createdAt: string } // token_hash nunca e exposto ao frontend
