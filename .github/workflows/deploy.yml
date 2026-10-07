@@ -25,6 +25,10 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Conferir base path e assets (o dist publicado não pode ser o código-fonte)
+        run: |
+          grep -q 'src="/${{ github.event.repository.name }}/assets/' dist/index.html
+          ! grep -q '/src/main.tsx' dist/index.html
       - name: Nenhuma credencial privada no bundle
         run: "! grep -rIlE 'SUPABASE_SERVICE_ROLE_KEY|service_role[\"]?[ ]*:[ ]*[\"]?eyJ' dist"
       - name: SPA no GitHub Pages (404.html = index.html; assim /admin e /obra/TOKEN funcionam ao atualizar)
