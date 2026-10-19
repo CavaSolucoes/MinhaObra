@@ -20,6 +20,8 @@ import ProjectFinancial from './pages/admin/project/ProjectFinancial'
 import ProjectMedia from './pages/admin/project/ProjectMedia'
 import ProjectDocuments from './pages/admin/project/ProjectDocuments'
 import ProjectLink from './pages/admin/project/ProjectLink'
+import ProjectMeasurements from './pages/admin/project/ProjectMeasurements'
+import MeasurementEditor from './pages/admin/project/MeasurementEditor'
 import { EnvMissing } from './components/EnvMissing'
 import { missingEnv, useMock } from './lib/supabase'
 const NotFound = () => <div id="app"><div className="card" style={{ marginTop: 40 }}>Página não encontrada.</div></div>
@@ -40,7 +42,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           <Route path="login" element={<AdminLogin />} />
           <Route element={<RequireAdmin />}><Route index element={<AdminDashboard />} /><Route path="obra/nova" element={<AdminProjectNew />} />
             <Route path="obra/:projectId" element={<AdminProjectLayout />}>
-              <Route index element={<ProjectOverview />} /><Route path="cronograma" element={<ProjectSchedule />} /><Route path="financeiro" element={<ProjectFinancial />} />
+              <Route index element={<ProjectOverview />} /><Route path="cronograma" element={<ProjectSchedule />} /><Route path="medicoes" element={<ProjectMeasurements />} /><Route path="medicoes/nova" element={<MeasurementEditor />} /><Route path="medicoes/:measurementId" element={<MeasurementEditor />} /><Route path="financeiro" element={<ProjectFinancial />} />
               <Route path="fotos" element={<ProjectMedia />} /><Route path="documentos" element={<ProjectDocuments />} /><Route path="link" element={<ProjectLink />} />
             </Route></Route>
         </Route>

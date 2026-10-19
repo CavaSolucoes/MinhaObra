@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { BUCKETS, storagePath } from './storageService'
 import type { DocumentCategory } from '../types'
-import type { AccessRow, AdminProjectData, DocRow, FinRow, MediaRow, ProjectAdminRow, StageRow } from '../types/db'
+import type { AccessRow, AdminProjectData, AuditRow, DocRow, FinRow, MediaRow, MeasurementRow, ProjectAdminRow, StageRow } from '../types/db'
 // Todas as escritas passam pelo RLS (policy admin_all / admin_storage_all). Nada aqui contorna permissao.
 type Res<T> = { data: T | null; error: { message: string } | null }
 const run = async <T,>(p: PromiseLike<Res<T>>): Promise<T> => { const { data, error } = await p; if (error) throw new Error(error.message); return data as T }
@@ -85,8 +85,34 @@ export async function uploadDocument(projectId: string, o: { file: File; categor
   const ins = await supabase.from('documents').insert({ project_id: projectId, category: o.category, name: o.name, storage_path: path, file_type: ext, file_size: o.file.size })
   if (ins.error) { await supabase.storage.from(BUCKETS.document).remove([path]); throw new Error(ins.error.message) }
 }
+// ---- foto principal (bucket privado photos; caminho guardado em projects.main_image_url). Ordem segura: envia a nova -> vincula -> só então remove a antiga.
+export async function setMainImage(projectId: string, file: File, oldPath: string | null): Promise<{ warning?: string }> {
+  const path = storagePath(projectId, 'principal', `${crypto.randomUUID()}-${safeName(file.name)}`)
+  const up = await supabase.storage.from(BUCKETS.photo).upload(path, file, { contentType: file.type, upsert: false })
+  if (up.error) throw new Error(up.error.message)
+  try { await run<{ id: string }>(supabase.from('projects').update({ main_image_url: path }).eq('id', projectId).select('id').single()) }
+  catch (e) { const rm = await supabase.storage.from(BUCKETS.photo).remove([path]); throw new Error(`${(e as Error).message}${rm.error ? ` — atenção: o arquivo ${path} ficou no Storage` : ''}`) }
+  if (oldPath && oldPath !== path && !/^https?:/i.test(oldPath)) { const r = await supabase.storage.from(BUCKETS.photo).remove([oldPath]); if (r.error) return { warning: `Foto anterior não removida do Storage: ${oldPath} (${r.error.message})` } }
+  return {}
+}
 export async function deleteDocument(d: DocRow) { await rmFile(BUCKETS.document, d.storage_path); await delOne('documents', d.id) }
 
 // ---- link do cliente (token so existe em memoria no momento da criacao; o banco guarda apenas o hash)
 export const createAccessLink = (projectId: string) => run<string>(supabase.rpc('create_access_link', { p_project: projectId }))
 export const setAccessActive = (id: string, active: boolean) => run<{ id: string }>(supabase.from('project_access').update({ active }).eq('id', id).select('id').single())
+
+// ---- medições (migration 005). Leitura direta (admin); gravação SOMENTE pela função save_measurement (atômica, com auditoria).
+export class MigrationPendingError extends Error {}
+const pending = (m: string) => /schema cache|does not exist|could not find the/i.test(m)
+export async function listMeasurements(projectId: string): Promise<MeasurementRow[]> {
+  const { data, error } = await supabase.from('measurements').select('*, measurement_items(*)').eq('project_id', projectId).order('reference_date')
+  if (error) throw pending(error.message) ? new MigrationPendingError('A migration 005 (medições) ainda não foi aplicada no banco.') : new Error(error.message)
+  return (data ?? []) as MeasurementRow[]
+}
+export const loadMeasurementAudit = (measurementId: string) => rows<AuditRow>(supabase.from('measurement_audit').select('*').eq('measurement_id', measurementId).order('changed_at', { ascending: false }))
+export type MeasurementInput = { projectId: string; referenceDate: string; notes: string | null; items: { stage_id: string; actual_percent: number }[]; measurementId?: string | null }
+export async function saveMeasurement(i: MeasurementInput) {
+  const { data, error } = await supabase.rpc('save_measurement', { p_project: i.projectId, p_reference_date: i.referenceDate, p_notes: i.notes, p_items: i.items, p_measurement: i.measurementId ?? null })
+  if (error) throw new Error(error.message)
+  return data as { id: string; progress_percent: number; is_latest: boolean; synced_from: string | null }
+}

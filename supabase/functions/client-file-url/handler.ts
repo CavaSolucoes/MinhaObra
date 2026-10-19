@@ -2,6 +2,7 @@
 // O token é validado pelo MESMO mecanismo do portal: a RPC get_client_project(token), que já devolve
 // somente a obra daquele token. Um arquivo só é assinado se estiver nessa resposta (= pertence à obra).
 export type ClientPayload = {
+  project?: { id: string; main_image_url: string | null }
   media: { id: string; media_type: 'photo' | 'video'; storage_path: string }[]
   documents: { id: string; name: string; storage_path: string }[]
 } | null
@@ -20,7 +21,7 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405)
   let b: { token?: unknown; kind?: unknown; id?: unknown; download?: unknown }
   try { b = await req.json() } catch { return reply({ error: 'bad_request' }, 400) }
-  if (typeof b.token !== 'string' || !TOKEN.test(b.token) || typeof b.id !== 'string' || !UUID.test(b.id) || (b.kind !== 'media' && b.kind !== 'document')) return reply({ error: 'bad_request' }, 400)
+  if (typeof b.token !== 'string' || !TOKEN.test(b.token) || typeof b.id !== 'string' || !UUID.test(b.id) || (b.kind !== 'media' && b.kind !== 'document' && b.kind !== 'project_image')) return reply({ error: 'bad_request' }, 400)
 
   let payload: ClientPayload
   try { payload = await deps.getClientProject(b.token) } catch { return reply({ error: 'unavailable' }, 502) }
@@ -29,10 +30,13 @@ export async function handle(req: Request, deps: Deps): Promise<Response> {
   // Inexistente e "de outra obra" têm a mesma resposta: o cliente não descobre nada além da própria obra.
   const m = b.kind === 'media' ? payload.media?.find(x => x.id === b.id) : undefined
   const d = b.kind === 'document' ? payload.documents?.find(x => x.id === b.id) : undefined
-  const item = m ?? d
+  // Foto principal da obra: só a da PRÓPRIA obra do token (id = id da obra), caminho dentro da pasta da obra, nunca URL externa.
+  const pr = b.kind === 'project_image' ? payload.project : undefined
+  const img = pr && pr.id === b.id && pr.main_image_url && !/^https?:/i.test(pr.main_image_url) && pr.main_image_url.startsWith(`${pr.id}/`) ? { storage_path: pr.main_image_url } : undefined
+  const item = m ?? d ?? img
   if (!item) return reply({ error: 'not_found' }, 404)
 
-  const type = m ? m.media_type : 'document'
+  const type = m ? m.media_type : img ? 'photo' : 'document'
   const bucket = type === 'photo' ? 'photos' : type === 'video' ? 'videos' : 'documents'
   const ttl = TTL[type]
   let url: string | null

@@ -1,7 +1,6 @@
 // SEED/DEMO — unico lugar com dados de exemplo. Sera substituido por dados reais na integracao.
 // Obs.: so a divisao Materiais/Mao de obra da Estrutura vem da especificacao; as demais sao valores demo.
 import type { ClientProject, Media, Stage, StageFinancial } from '../types'
-import { buildCurve, weightedProgress } from '../utils/curve'
 
 
 const P = 'p1'
@@ -32,7 +31,7 @@ const media: Media[] = days.flatMap((d, di) =>
   Array.from({ length: d.photos + d.videos }, (_, i): Media => ({ id: `m-${d.date}-${i}`, projectId: P, stageId: d.stageId, type: i >= d.photos ? 'video' : 'photo', date: d.date, caption: d.caption, url: null, thumbHue: 30 + ((i * 17 + di * 40) % 30) })))
 
 export const mockClientProject: ClientProject = {
-  project: { id: P, name: 'Residência Parque das Dunas', location: 'Eusébio - CE', progress: Math.round(weightedProgress(stages, financials, s => s.actualPercent)), startDate: '2026-01-10', plannedEndDate: '2026-12-15', budget: 250000, spent: 183400, mainImageUrl: null },
+  project: { id: P, name: 'Residência Parque das Dunas', location: 'Eusébio - CE', startDate: '2026-01-10', plannedEndDate: '2026-12-15', budget: 250000, spent: 183400, mainImageUrl: null },
   stages, financials, media,
   documents: [
     { id: 'd1', projectId: P, category: 'Projetos', name: 'Projeto_Estrutural.pdf', date: '2026-09-01', fileType: 'pdf' },
@@ -41,5 +40,10 @@ export const mockClientProject: ClientProject = {
     { id: 'd4', projectId: P, category: 'ART/RRT', name: 'ART_Execução.pdf', date: '2026-01-15', fileType: 'pdf' },
     { id: 'd5', projectId: P, category: 'Contratos', name: 'Contrato.pdf', date: '2026-01-10', fileType: 'pdf' },
   ],
-  curve: buildCurve({ startDate: '2026-01-10', plannedEndDate: '2026-12-15' }, stages, financials),
+  // DEMO: medições de exemplo (apenas modo VITE_USE_MOCK)
+  measurements: [
+    { id: 'ms1', date: '2026-06-30', progress: 38.5714, items: [] },
+    { id: 'ms2', date: '2026-08-31', progress: 40, items: [] },
+    { id: 'ms3', date: '2026-09-30', progress: 46.4286, items: [] },
+  ],
 }

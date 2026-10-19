@@ -83,3 +83,22 @@ test('portal com documentos exibe Ver/Baixar', () => {
   const html = renderToStaticMarkup(h(StaticRouter, { location: '/obra/TOKEN-A' }, h(Routes, null, h(Route, { path: '/obra/:token', element: h(Outlet, { context: demo }) }, h(Route, { index: true, element: h(Documents) })))))
   assert.ok(html.includes('Ver') && html.includes('Baixar') && html.includes('Contrato.pdf'))
 })
+
+const PA = { ...A!, project: { id: id(100), main_image_url: `${id(100)}/principal/x-capa.jpg` } }
+const PB = { ...B!, project: { id: id(200), main_image_url: null } }
+const PH = { ...A!, project: { id: id(300), main_image_url: 'https://externo.com/x.jpg' } }
+const PX = { ...A!, project: { id: id(100), main_image_url: `${id(999)}/principal/x.jpg` } }
+function w2(map: Record<string, ClientPayload>) { const signed: { bucket: string; path: string; ttl: number }[] = []; const deps: Deps = { getClientProject: async t => map[t] ?? null, signUrl: async (b, p, ttl) => { signed.push({ bucket: b, path: p, ttl }); return `https://x/sign/${b}/${p}?token=1` } }; return { signed, call: (b: unknown) => handle(new Request('http://f/', { method: 'POST', body: JSON.stringify(b) }), deps) } }
+test('foto principal: token válido + id da própria obra → URL assinada do bucket photos (TTL curto)', async () => {
+  const { call, signed } = w2({ 'TOKEN-A': PA }), r = await call({ token: 'TOKEN-A', kind: 'project_image', id: id(100) }), j = await r.json()
+  assert.equal(r.status, 200); assert.deepEqual(Object.keys(j).sort(), ['expires_in', 'url']); assert.deepEqual(signed[0], { bucket: 'photos', path: `${id(100)}/principal/x-capa.jpg`, ttl: TTL.photo })
+})
+test('foto principal: id de OUTRA obra, obra sem foto, URL externa, caminho fora da pasta da obra e token inválido → bloqueado', async () => {
+  const { call, signed } = w2({ 'TOKEN-A': PA, 'TOKEN-B': PB, 'TOKEN-H': PH, 'TOKEN-X': PX })
+  assert.equal((await call({ token: 'TOKEN-A', kind: 'project_image', id: id(200) })).status, 404)   // id de outra obra
+  assert.equal((await call({ token: 'TOKEN-B', kind: 'project_image', id: id(200) })).status, 404)   // sem foto
+  assert.equal((await call({ token: 'TOKEN-H', kind: 'project_image', id: id(300) })).status, 404)   // URL externa nunca é assinada
+  assert.equal((await call({ token: 'TOKEN-X', kind: 'project_image', id: id(100) })).status, 404)   // caminho de outra pasta
+  assert.equal((await call({ token: 'TOKEN-ZZZ', kind: 'project_image', id: id(100) })).status, 401)
+  assert.equal(signed.length, 0)
+})

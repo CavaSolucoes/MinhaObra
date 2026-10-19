@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
 import { loadAdminProject } from '../../../services/adminApi'
 import type { AdminProjectData } from '../../../types/db'
-const TABS = [['', 'Visão geral'], ['cronograma', 'Cronograma'], ['financeiro', 'Financeiro'], ['fotos', 'Fotos'], ['documentos', 'Documentos'], ['link', 'Link do cliente']]
+const TABS = [['', 'Visão geral'], ['cronograma', 'Cronograma'], ['medicoes', 'Medições'], ['financeiro', 'Financeiro'], ['fotos', 'Fotos'], ['documentos', 'Documentos'], ['link', 'Link do cliente']]
 export default function AdminProjectLayout() {
   const { projectId = '' } = useParams(), [data, setData] = useState<AdminProjectData | null>(null), [err, setErr] = useState<string | null>(null)
   const reload = useCallback(async () => { try { setData(await loadAdminProject(projectId)); setErr(null) } catch (e) { setErr(e instanceof Error ? e.message : 'Erro') } }, [projectId])

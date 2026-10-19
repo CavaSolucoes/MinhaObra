@@ -19,3 +19,20 @@ export function validateStage(f: { name: string; planned_start: string; planned_
   for (const v of [f.planned_percent, f.actual_percent]) { const n = toNum(v); if (!(n >= 0 && n <= 100)) return 'Percentuais devem estar entre 0 e 100.' }
   return null
 }
+
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'], IMAGE_MAX_BYTES = 5 * 1024 * 1024
+export function validateImageFile(f: { type: string; size: number }): string | null {
+  if (!IMAGE_TYPES.includes(f.type)) return 'Use uma imagem JPG, PNG ou WebP.'
+  if (f.size > IMAGE_MAX_BYTES) return 'A imagem deve ter no máximo 5 MB.'
+  return null
+}
+
+export const MIN_REFERENCE_DATE = '2000-01-01', NOTES_MAX = 5000
+// Data de referência da medição: de 01/01/2000 até hoje (data local do navegador), inclusive. O banco aplica a mesma regra (fuso de Fortaleza).
+export function validateReferenceDate(date: string, today: string = todayLocal()): string | null {
+  if (!isDate(date)) return 'Informe uma data de referência válida.'
+  if (date < MIN_REFERENCE_DATE) return 'A data de referência não pode ser anterior a 01/01/2000.'
+  if (date > today) return 'A data de referência não pode ser futura.'
+  return null
+}
+export const validateNotes = (n: string) => (n.length > NOTES_MAX ? `As observações podem ter no máximo ${NOTES_MAX} caracteres.` : null)

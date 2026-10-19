@@ -1,5 +1,5 @@
 import { supabase, useMock } from '../lib/supabase'
-export type FileKind = 'media' | 'document'
+export type FileKind = 'media' | 'document' | 'project_image'
 type Invoke = (body: { token: string; kind: FileKind; id: string; download?: boolean }) => Promise<{ data: unknown; error: { context?: { status?: number } } | null }>
 export class FileAccessError extends Error {}
 const MSG: Record<number, string> = { 401: 'Link inválido ou desativado.', 404: 'Arquivo não encontrado.' }
